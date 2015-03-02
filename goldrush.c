@@ -12,6 +12,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+
 #include <signal.h>
 #include <semaphore.h>
 #include <mpi.h>
@@ -51,6 +55,8 @@ int current_phase_id = 0;
 int is_resumed = 0;
 int has_start_phase = 0;
 int is_in_mainloop = 0;
+
+extern gr_file_array_t gr_files;
 
 df_shm_method_t gr_shm_handle = NULL;
 df_shm_region_t gr_shm_meta_region = NULL;
@@ -409,7 +415,7 @@ int gr_phase_start_s(char *filename, unsigned int line)
         gr_files->array[next] = fd;
         gr_files->size++;
 
-        gr_phase_start(file, line);
+        gr_phase_start(fd, line);
     }
     
     return 0;
@@ -485,16 +491,12 @@ int gr_phase_start(unsigned long int file, unsigned int line)
  */
 int gr_phase_end_s(char *filename, unsigned int line)
 {
-    nt fd = open(filename, O_RDWR);
+    int fd = open(filename, O_RDWR);
     if (fd == -1) {
         fprintf(stderr, "failed to get file identifier, cannot estimate the length \
                 because of error: %s\n", strerror(errno));
     } else {
-        int next = gr_files->size;
-        gr_files->array[next] = fd;
-        gr_files->size++;
-
-        gr_phase_end(file, line);
+        gr_phase_end(fd, line);
     }
 }
 /*

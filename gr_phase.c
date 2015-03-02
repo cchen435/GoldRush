@@ -11,7 +11,7 @@ static int gr_max_num_phases = 0;
 static gr_phase_t gr_phases = NULL;
 static gr_phase_perf_t gr_phases_perf = NULL;
 
-static gr_file_arry_t gr_files = NULL;
+static gr_file_array_t gr_files = NULL;
 
 // cache to speedup the search of gr_phases array
 static int previous_phase = -1; 
@@ -25,7 +25,7 @@ extern int current_phase_id;
 
 int gr_create_global_phases(int max_num_phases)
 {
-    gr_files = (gr_file_arry_t) calloc (GR_MAX_OPEN_FILE, sizeof(gr_file_arry));
+    gr_files = (gr_file_array_t) calloc (GR_MAX_OPEN_FILE, sizeof(gr_file_array));
     if (!gr_files) {
         fprintf(stderr, "Error: cannot allocate memory. %s:%d\n", __FILE__, __LINE__ );
         return -1;

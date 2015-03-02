@@ -10,9 +10,9 @@
 
 // used to store the opened file
 typedef struct _gr_file_array{
-    int arry[GR_MAX_OPEN_FILE];
+    int array[GR_MAX_OPEN_FILE];
     int size; 
-} gr_file_array, *gr_file_arry_t;
+} gr_file_array, *gr_file_array_t;
 
 
 typedef struct _gr_phase {
