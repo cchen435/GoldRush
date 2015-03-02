@@ -60,6 +60,7 @@ int is_in_mainloop = 0;
 df_shm_method_t gr_shm_handle = NULL;
 df_shm_region_t gr_shm_meta_region = NULL;
 gr_shm_layout_t gr_shm_meta = NULL;
+gr_mon_buffer_t gr_monitor_buffer = NULL;
 #ifdef GR_HAVE_PERFCTR
 df_shm_region_t gr_mon_buffer_region = NULL;
 gr_mon_buffer_t gr_monitor_buffer = NULL;
