@@ -56,7 +56,6 @@ int is_resumed = 0;
 int has_start_phase = 0;
 int is_in_mainloop = 0;
 
-extern gr_file_array_t gr_files;
 
 df_shm_method_t gr_shm_handle = NULL;
 df_shm_region_t gr_shm_meta_region = NULL;

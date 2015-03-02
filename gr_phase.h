@@ -14,6 +14,7 @@ typedef struct _gr_file_array{
     int size; 
 } gr_file_array, *gr_file_array_t;
 
+static gr_file_array_t gr_files = NULL;
 
 typedef struct _gr_phase {
     uint64_t start_file_no;

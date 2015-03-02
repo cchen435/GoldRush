@@ -11,7 +11,6 @@ static int gr_max_num_phases = 0;
 static gr_phase_t gr_phases = NULL;
 static gr_phase_perf_t gr_phases_perf = NULL;
 
-static gr_file_array_t gr_files = NULL;
 
 // cache to speedup the search of gr_phases array
 static int previous_phase = -1; 
