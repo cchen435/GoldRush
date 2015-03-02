@@ -407,8 +407,7 @@ int gr_phase_start_s(char *filename, unsigned int line)
     
     int fd = open(filename, O_RDWR);
     if (fd == -1) {
-        fprintf(stderr, "failed to get file identifier, cannot estimate the length \
-                because of error: %s\n", strerror(errno));
+        fprintf(stderr, "failed to get file identifier for (%s), cannot estimate the length because of error: %s\n", filename, strerror(errno));
     } else {
         int next = gr_files->size;
         gr_files->array[next] = fd;

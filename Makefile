@@ -22,7 +22,8 @@ ifeq ($(ROHAN),y)
 endif
 
 ifeq ($(LINUX),y)
-    CC=mpicc -c -g -DNDEBUG=1 -DGR_HAVE_PERFCTR=1
+    CC=mpicc -c -g -DNDEBUG=1
+ #   CC=mpicc -c -g -DNDEBUG=1 -DGR_HAVE_PERFCTR=1
     CFLAGS=-c -O2 -DNDEBUG=1 -I$(HOME)/apps/include -L$(HOME)/apps/lib
     INSTALL_PREFIX=$(HOME)/apps
 endif
