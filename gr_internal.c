@@ -11,6 +11,8 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <mpi.h>
+#include <omp.h>
+
 #include "gr_internal.h"
 
 extern int gr_app_id;
@@ -79,6 +81,12 @@ gr_sender_t gr_get_sender(int sender_app_id)
         }
     }    
     return NULL;
+}
+
+/* Check whether the thread is the main thread */
+int gr_is_main_thread() {
+    int tid = omp_get_thread_num();
+    return (tid==0);
 }
 
 /*

@@ -61,6 +61,9 @@ int gr_get_sender_app_id(char *data_group_name);
  */
 gr_sender_t gr_get_sender(int sender_app_id);
 
+/* check whether the thread is the main thread */
+int gr_is_main_thread();
+
 /*
  * Test if the calling process is the local leader on the local node.
  * Return 1 for yes and 0 for no.

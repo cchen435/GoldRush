@@ -5,7 +5,15 @@
 #include <stdint.h>
 #include "gr_perfctr.h"
 
-#define GR_DEFAULT_NUM_PHASES 200
+#define GR_DEFAULT_NUM_PHASES 256
+#define GR_MAX_OPEN_FILE 256
+
+// used to store the opened file
+typedef struct _gr_file_array{
+    int arry[GR_MAX_OPEN_FILE];
+    int size; 
+} gr_file_array, *gr_file_arry_t;
+
 
 typedef struct _gr_phase {
     uint64_t start_file_no;
@@ -27,6 +35,7 @@ typedef struct _gr_phase_perf {
 int gr_create_global_phases(int max_num_phases);
 
 void gr_destroy_global_phases();
+void gr_destroy_opened_files();
 
 /*
  * Find the phase which match the start file and line number

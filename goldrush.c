@@ -26,7 +26,9 @@
 #endif
 #include "gr_phase.h"
 
-
+/* changed by Chao for kitten, using kitten scheduler API 
+   for suspend operation 
+*/
 #include "coopsched.h"
 
 /* Macros and constants */
@@ -118,7 +120,13 @@ int gr_init(MPI_Comm comm)
     gr_local_rank = gr_get_local_rank();
     gr_local_size = gr_get_num_procs_per_node(comm);
 
-#if 0
+
+
+    /**
+     * creating a shared memory, as in kitten, possibly not using
+     * shared memory stuff, so commented here
+      */
+ #if 0
     char *shm_method_str = getenv("DF_SHM_METHOD");
     enum DF_SHM_METHOD shm_method_no;
     if(shm_method_str) {
@@ -178,25 +186,26 @@ int gr_init(MPI_Comm comm)
     }
     gr_shm_meta = (gr_shm_layout_t)gr_shm_meta_region->starting_addr;
 #endif
-#if 0
+
     is_simulation = 0;
     if(getenv("GR_IS_SIMULATION") != NULL) {
         is_simulation = 1;
     }
  
-    if(!is_simulation) { // analytics specific initialization
-#ifdef GR_HAVE_PERFCTR
-        char *do_phase_perfctr_str = getenv("GR_DO_PHASE_PERFCTR");
-        if(do_phase_perfctr_str != NULL) {
-            int d = atoi(do_phase_perfctr_str);
-            gr_do_phase_perfctr = (d == 0) ? 0:1;
-        }
+ #ifdef GR_HAVE_PERFCTR
+    char *do_phase_perfctr_str = getenv("GR_DO_PHASE_PERFCTR");
+    if(do_phase_perfctr_str != NULL) {
+        int d = atoi(do_phase_perfctr_str);
+        gr_do_phase_perfctr = (d == 0) ? 0:1;
+    }
 
-        if(gr_do_phase_perfctr) {
-            gr_perfctr_init(gr_comm_rank);
-            gr_perfctr_start(gr_comm_rank);
-        }
+    if(gr_do_phase_perfctr) {
+        gr_perfctr_init(gr_comm_rank);
+        gr_perfctr_start(gr_comm_rank);
+    }
 #endif
+
+    if(!is_simulation) { // analytics, no more work need to be done. 
         return 0;
     }
 
@@ -211,39 +220,33 @@ int gr_init(MPI_Comm comm)
         gr_do_suspend = (d == 0) ? 0:1;
     }
 
-#ifdef GR_HAVE_PERFCTR
-    char *do_phase_perfctr_str = getenv("GR_DO_PHASE_PERFCTR");
-    if(do_phase_perfctr_str != NULL) {
-        int d = atoi(do_phase_perfctr_str);
-        gr_do_phase_perfctr = (d == 0) ? 0:1;
-    }
 
-    if(gr_do_phase_perfctr) {
-        gr_perfctr_init(gr_comm_rank);
-        gr_perfctr_start(gr_comm_rank);
-    }
-#endif
-#endif
-#if 0
     // phase performance history buffer
+    // Chao: each MPI process will create a phase buffer to
+    // record the length of the phase
     if(gr_create_global_phases(GR_DEFAULT_NUM_PHASES)) {
         exit(-1);
     }
 
+    // threashold value, detemine whether the phase should be used for analysis
     char *min_phase_str = getenv("GR_MIN_PHASE_LEN");
     if(min_phase_str != NULL) {
         min_phase_length = atoi(min_phase_str);
     }
 
+#if 0
+    // Chao: gr_do_stub is going to monitor the performance of simulation 
+    // to decide whether run the analysis to avoid interference. not using
+    // it currently
     char *gr_do_stub_str = getenv("GR_DO_STUB");
     if(gr_do_stub_str != NULL) {
         gr_do_stub = atoi(gr_do_stub_str);
     }
-#endif
+
     // initialize shared memory monitor buffer
     int my_local_rank = gr_get_local_rank();
     key_t mon_buffer_key = 0;
-#if 0
+
 #ifdef GR_HAVE_PERFCTR
     if(gr_do_stub) {
         mon_buffer_key = my_local_rank + SHM_MONITOR_BUFFER_KEY_BASE;
@@ -254,26 +257,22 @@ int gr_init(MPI_Comm comm)
         gr_monitor_buffer = (gr_mon_buffer_t) gr_mon_buffer_region->starting_addr;
     }
 #endif
-#endif 
 
-#if 0
     gr_sender_t s = &(gr_shm_meta->senders[gr_shm_meta->num_senders]);
     int num_procs = gr_get_num_procs_per_node(comm);
-#endif
-#if 0
+
 #ifdef GR_HAVE_PERFCTR
     s->shm_mon_buffer_key[my_local_rank] = mon_buffer_key;
 #endif
-#endif
+
     MPI_Barrier(comm);
-#if 0
+
     if(gr_get_local_rank() == 0) {
         s->app_id = gr_app_id;
         s->num_procs = num_procs;
         gr_shm_meta->num_senders ++;
     }
-#endif
-#if 0
+
 #ifdef GR_HAVE_PERFCTR
     if(gr_do_stub) {
         // initialize signal handling
@@ -308,7 +307,7 @@ int gr_init(MPI_Comm comm)
         fprintf(stderr, "cannot open file %s\n", log_file_name);
     }
 #endif
-    //fprintf(stderr, "exit gr_init\n");
+
     return 0;
 }
 
@@ -320,16 +319,18 @@ int gr_init(MPI_Comm comm)
  */
 int gr_finalize()
 {
-#if 0
+
+    df_destroy_shm_region(gr_shm_meta_region);
+    df_shm_finalize(gr_shm_handle);
+    gr_destroy_global_phases();
+    gr_destroy_opened_files();
+
     if(!is_simulation) { // analytics
         gr_finalize_scheduler();
-        df_destroy_shm_region(gr_shm_meta_region);
-        df_shm_finalize(gr_shm_handle);
         return 0;
     }
-#endif
 
-    // simulation
+    // simulation only
 
 #ifdef GR_HAVE_PERFCTR
     if(gr_do_stub) {
@@ -354,11 +355,7 @@ int gr_finalize()
     }
     gr_perfctr_finalize(gr_comm_rank);
 #endif
-#if 0
-    df_destroy_shm_region(gr_shm_meta_region);
-    df_shm_finalize(gr_shm_handle);
-    gr_destroy_global_phases();
-#endif
+
 	return 0;
 }
 
@@ -370,7 +367,6 @@ int gr_finalize()
 int gr_mainloop_start()
 {
     is_in_mainloop = 1;
-    //fprintf(stderr, "exit gr_mainloop_start \n");
     return 0;
 }
 
@@ -380,23 +376,45 @@ int gr_mainloop_start()
 int gr_mainloop_end()
 {
     is_in_mainloop = 0;
-#if 0
-    gr_receiver_t r = gr_shm_meta->receivers;
-    int num_receivers = gr_shm_meta->num_receivers;
-    int i;
-    for(i = 0; i < num_receivers; i ++) {
-        gr_resume_receiver(&r[i]);
-    }
-#endif 
 
-	if (!gr_is_local_leader()) {
-		//fprintf(stderr, "gr_mainloop_end, befor yiedl_to_loop\n");
+    /**
+     * if worker process (not leader process) yielding CPU;
+     * not check the length of phase in gr_mainloop_end
+     */
+	if (!gr_is_main_thread()) {
+        /* check whether the idle length is long enough. */
 		yield_to_coop();
-		//fprintf(stderr, "gr_mainloop_end, after yiedl_to_loop\n");
 	}
 
     return 0;
 }
+
+/**
+ * an wrap to gr_pahse_start using filename as an input
+ */
+int gr_phase_start_s(char *filename, unsigned int line) 
+{
+    /**
+     * here using a hash function to hash the file name
+     * into a unsigned long
+     */
+    //unsigned long int file = hash(filename);
+    
+    int fd = open(filename, O_RDWR);
+    if (fd == -1) {
+        fprintf(stderr, "failed to get file identifier, cannot estimate the length \
+                because of error: %s\n", strerror(errno));
+    } else {
+        int next = gr_files->size;
+        gr_files->array[next] = fd;
+        gr_files->size++;
+
+        gr_phase_start(file, line);
+    }
+    
+    return 0;
+}
+
 
 /*
  * Mark the start of a phase. 
@@ -430,21 +448,8 @@ int gr_phase_start(unsigned long int file, unsigned int line)
 #endif
 
     // resume the analysis process
-    if(should_run) {
-        // TODO: lock semaphore
-        gr_receiver_t r = gr_shm_meta->receivers;
-        int num_receivers = gr_shm_meta->num_receivers;
-        int i;
-        for(i = 0; i < num_receivers; i ++) {
-            gr_resume_receiver(&r[i]);
-// optimize out
-//            int resume_ok = gr_resume_receiver(&r[i]);
-//            if(resume_ok != 0) {
-//                fprintf(stderr, "Error: gr_resume_receiver() returns non-zero. %s:%d\n",
-//                    __FILE__, __LINE__);
-//                return -1;
-//            }
-        }
+    if(should_run && !gr_is_main_thread()) {
+        yield_to_coop();
         is_resumed = 1;
     }
 
@@ -475,6 +480,23 @@ int gr_phase_start(unsigned long int file, unsigned int line)
     return 0;        
 }
 
+/**
+ * a wraper to gr_phase_end, with parameter file as a string
+ */
+int gr_phase_end_s(char *filename, unsigned int line)
+{
+    nt fd = open(filename, O_RDWR);
+    if (fd == -1) {
+        fprintf(stderr, "failed to get file identifier, cannot estimate the length \
+                because of error: %s\n", strerror(errno));
+    } else {
+        int next = gr_files->size;
+        gr_files->array[next] = fd;
+        gr_files->size++;
+
+        gr_phase_end(file, line);
+    }
+}
 /*
  * Mark the end of a phase. It must match a gr_phase_start() call.
  *
@@ -495,8 +517,8 @@ int gr_phase_end(unsigned long int file, unsigned int line)
     uint64_t end_cycle = rdtsc();
 
     long long end_perfctr_values[NUM_EVENTS];
-#ifdef GR_HAVE_PERFCTR
 
+#ifdef GR_HAVE_PERFCTR
 // optimize out
     if(gr_do_phase_perfctr) {
         gr_perfctr_read(end_perfctr_values);
@@ -520,17 +542,15 @@ int gr_phase_end(unsigned long int file, unsigned int line)
     // suspend the analysis process
     if(is_resumed) {
         // TODO: lock semaphore
+        // Chao: do nothing here first, as it is main thread
+#if 0
         gr_receiver_t r = gr_shm_meta->receivers;
         int num_receivers = gr_shm_meta->num_receivers;
         int i;
         for(i = 0; i < num_receivers; i ++) {
             gr_suspend_receiver(&r[i]);
-// optimize out
-//            if(gr_suspend_receiver(&r[i]) != 0) {
-//                fprintf(stderr, "Error: gr_suspend_receiver() returns non-zero. %s:%d\n",
-//                    __FILE__, __LINE__);
-//            }
         }
+#endif
         is_resumed = 0;
     }
 
