@@ -66,6 +66,7 @@ df_shm_region_t gr_mon_buffer_region = NULL;
 gr_mon_buffer_t gr_monitor_buffer = NULL;
 #endif
 
+
 /* configuration constants */
 key_t gr_meta_region_key = 1997;
 char *gr_meta_region_mmap_name = "/tmp/gr_meta_region";
@@ -240,7 +241,6 @@ int gr_init(MPI_Comm comm)
         min_phase_length = atoi(min_phase_str);
     }
 
-#if 0
     // Chao: gr_do_stub is going to monitor the performance of simulation 
     // to decide whether run the analysis to avoid interference. not using
     // it currently
@@ -249,6 +249,7 @@ int gr_init(MPI_Comm comm)
         gr_do_stub = atoi(gr_do_stub_str);
     }
 
+#if 0
     // initialize shared memory monitor buffer
     int my_local_rank = gr_get_local_rank();
     key_t mon_buffer_key = 0;
@@ -410,10 +411,7 @@ int gr_phase_start_s(char *filename, unsigned int line)
     if (fd == -1) {
         fprintf(stderr, "failed to get file identifier for (%s), cannot estimate the length because of error: %s\n", filename, strerror(errno));
     } else {
-        int next = gr_files->size;
-        gr_files->array[next] = fd;
-        gr_files->size++;
-
+	gr_record_fd(fd);
         gr_phase_start(fd, line);
     }
     

@@ -11,6 +11,7 @@ static int gr_max_num_phases = 0;
 static gr_phase_t gr_phases = NULL;
 static gr_phase_perf_t gr_phases_perf = NULL;
 
+static gr_file_array_t gr_files = NULL;
 
 // cache to speedup the search of gr_phases array
 static int previous_phase = -1; 
@@ -21,6 +22,16 @@ extern int gr_do_phase_perfctr;
 extern int gr_num_events;
 extern int is_in_mainloop;
 extern int current_phase_id;
+
+int gr_record_fd(int fd)
+{
+    if (gr_files) {
+	int next = gr_files->size;
+	gr_files->array[next] = fd;
+	gr_files->size++;
+     }
+     return 0;
+}
 
 int gr_create_global_phases(int max_num_phases)
 {

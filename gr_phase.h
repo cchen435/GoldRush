@@ -14,7 +14,6 @@ typedef struct _gr_file_array{
     int size; 
 } gr_file_array, *gr_file_array_t;
 
-static gr_file_array_t gr_files = NULL;
 
 typedef struct _gr_phase {
     uint64_t start_file_no;
@@ -34,7 +33,7 @@ typedef struct _gr_phase_perf {
 } gr_phase_perf, *gr_phase_perf_t;
 
 int gr_create_global_phases(int max_num_phases);
-
+int gr_record_fd(int fd);
 void gr_destroy_global_phases();
 void gr_destroy_opened_files();
 
