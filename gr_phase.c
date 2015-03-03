@@ -118,18 +118,22 @@ gr_phase_t gr_find_phase(unsigned long int file, unsigned int line, gr_phase_per
                 fprintf(stderr, "Error: cannot allocate memory. %s:%d\n", __FILE__, __LINE__);
                 return NULL;
             }
-            gr_phases_perf = (gr_phase_perf_t) realloc(gr_phases_perf,
-                sizeof(gr_phase_perf) * gr_max_num_phases);
-            if(!gr_phases_perf) {
-                fprintf(stderr, "Error: cannot allocate memory. %s:%d\n", __FILE__, __LINE__);
-                return NULL;
+            if(gr_do_phase_perfctr) {
+                gr_phases_perf = (gr_phase_perf_t) realloc(gr_phases_perf,
+                    sizeof(gr_phase_perf) * gr_max_num_phases);
+                if(!gr_phases_perf) {
+                    fprintf(stderr, "Error: cannot allocate memory. %s:%d\n", __FILE__, __LINE__);
+                    return NULL;
+                }
             }
         }
         gr_phases[gr_num_phases].start_file_no = file;  
         gr_phases[gr_num_phases].start_line_no = line;  
         current_phase = gr_num_phases;
     }
-    *phase_perf = &(gr_phases_perf[current_phase]);
+    if(gr_do_phase_perfctr) {
+        *phase_perf = &(gr_phases_perf[current_phase]);
+    }
     current_phase_id = current_phase;
     return &(gr_phases[current_phase]);
 } 
@@ -160,14 +164,18 @@ int gr_get_phase(unsigned long int start_file,
     gr_phase_perf_t pp;
     // we already know this is the first time we see this phase
     if(new_phase) {
-        p = &(gr_phases[gr_num_phases]);  
-        pp = &(gr_phases_perf[gr_num_phases]);  
+        p = &(gr_phases[gr_num_phases]);       
         p->end_file_no = end_file;
         p->end_line_no = end_line;
         p->count = 0;
-        pp->avg_length = 0;
-        pp->max_length = 0;
-        pp->min_length = 0;
+
+        if(gr_do_phase_perfctr) {
+            pp = &(gr_phases_perf[gr_num_phases]); 
+            pp->avg_length = 0;
+            pp->max_length = 0;
+            pp->min_length = 0;
+        }
+        
 #ifdef GR_HAVE_PERFCTR
         if(gr_do_phase_perfctr) {
             gr_perfctr_init_counter(&(pp->perf_counter));
@@ -215,15 +223,19 @@ int gr_get_phase(unsigned long int start_file,
         }
     }
     p = &gr_phases[gr_num_phases];
-    pp = &(gr_phases_perf[gr_num_phases]);  
+      
     p->start_file_no = start_file;
     p->start_line_no = start_line;
     p->end_line_no = end_line;
     p->end_file_no = end_file;
     p->count = 0;
-    pp->avg_length = 0;
-    pp->max_length = 0;
-    pp->min_length = 0;
+    if(gr_do_phase_perfctr) {
+        pp = &(gr_phases_perf[gr_num_phases]); 
+        pp->avg_length = 0;
+        pp->max_length = 0;
+        pp->min_length = 0;
+    }
+
 #ifdef GR_HAVE_PERFCTR
     if(gr_do_phase_perfctr) {
         gr_perfctr_init_counter(&(pp->perf_counter));
@@ -237,7 +249,9 @@ int gr_get_phase(unsigned long int start_file,
 void gr_update_phase(int p_index, uint64_t length, long long *pctr_values)
 {
     gr_phases[p_index].count ++;
-    gr_phase_perf_t pp = &gr_phases_perf[p_index];
+    if (gr_do_phase_perfctr){
+        gr_phase_perf_t pp = &gr_phases_perf[p_index];
+    }
     //pp->avg_length = (pp->avg_length * gr_phases[p_index].count + length) / gr_phases[p_index].count;
     pp->avg_length += length;
     if(length > pp->max_length) {
@@ -260,17 +274,28 @@ void gr_print_phases(FILE *log_file)
     int i;
     for(i = 0; i < gr_num_phases; i ++) {
         gr_phase_t p = &gr_phases[i];
-        gr_phase_perf_t pp = &gr_phases_perf[i];
-        fprintf(log_file, "%d\t%llu\t%llu\t%llu\t%d\t%d\t%d\t%d\n",
-            p->count,
-            pp->max_length,
-            pp->min_length,
-            (p->count == 0)? 0 : pp->avg_length/p->count,
-            p->start_file_no,
-            p->start_line_no,
-            p->end_file_no,
-            p->end_line_no
-        );
+        if (gr_do_phase_perfctr){
+            gr_phase_perf_t pp = &gr_phases_perf[i];
+
+            fprintf(log_file, "%d\t%llu\t%llu\t%llu\t%d\t%d\t%d\t%d\n",
+                p->count,
+                pp->max_length,
+                pp->min_length,
+                (p->count == 0)? 0 : pp->avg_length/p->count,
+                p->start_file_no,
+                p->start_line_no,
+                p->end_file_no,
+                p->end_line_no
+            );
+        } else {
+            fprintf(log_file, "%d\t%d\t%d\t%d\t%d\n",
+                p->count,
+                p->start_file_no,
+                p->start_line_no,
+                p->end_file_no,
+                p->end_line_no
+            );
+        }
     }
 #ifdef GR_HAVE_PERFCTR
     fprintf(log_file, "\nPerformance Counter\n");
