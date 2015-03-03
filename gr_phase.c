@@ -45,7 +45,7 @@ int gr_open_file(char *filename)
     // open the file and record the id
     int fd = open(filename, O_RDWR);
     if (fd == -1) {
-        fprintf(stderr, "open file error: %s\n", strerr(errno));
+        fprintf(stderr, "open file error: %s\n", strerror(errno));
         return -1;
     }
 
