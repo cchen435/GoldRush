@@ -2,6 +2,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "goldrush.h"
 #include "gr_perfctr.h"
 #include "gr_phase.h"
@@ -23,13 +27,40 @@ extern int gr_num_events;
 extern int is_in_mainloop;
 extern int current_phase_id;
 
-int gr_record_fd(int fd)
+int gr_open_file(char *filename) 
+{
+    int i = 0;
+    if (!gr_files) {
+        fprintf(stderr, "gr_file is not initialized\n");
+        return -1;
+    }
+    
+    // check whether the file has been opened
+    for (i = 0; i < gr_files->size; i++) {
+        if (strcmp(filename, gr_files->names[i]) == 0) {
+            return gr_files->array[i];
+        }
+    }
+
+    // open the file and record the id
+    int fd = open(filename, O_RDWR);
+    if (fd == -1) {
+        fprintf(stderr, "open file error: %s\n", strerr(errno));
+        return -1;
+    }
+
+    gr_record_fd(fd, filename);
+}
+
+int gr_record_fd(int fd, char *filename)
 {
     if (gr_files) {
-	int next = gr_files->size;
-	gr_files->array[next] = fd;
-	gr_files->size++;
+	   int next = gr_files->size;
+       strcpy(gr_files->names[next], filename);
+	   gr_files->array[next] = fd;
+	   gr_files->size++;
      }
+
      return 0;
 }
 

@@ -10,6 +10,7 @@
 
 // used to store the opened file
 typedef struct _gr_file_array{
+    char names[GR_MAX_OPEN_FILE][64];
     int array[GR_MAX_OPEN_FILE];
     int size; 
 } gr_file_array, *gr_file_array_t;
@@ -33,7 +34,7 @@ typedef struct _gr_phase_perf {
 } gr_phase_perf, *gr_phase_perf_t;
 
 int gr_create_global_phases(int max_num_phases);
-int gr_record_fd(int fd);
+int gr_record_fd(int fd, char *filename);
 void gr_destroy_global_phases();
 void gr_destroy_opened_files();
 
@@ -57,6 +58,8 @@ int gr_get_phase(unsigned long int start_file,
 void gr_update_phase(int p_index, uint64_t length, long long *pctr_values);
 
 void gr_print_phases(FILE *log_file);
+
+int gr_open_file(char *filename);
 
 #endif
 

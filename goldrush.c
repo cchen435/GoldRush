@@ -12,9 +12,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <errno.h>
 
 #include <signal.h>
 #include <semaphore.h>
@@ -407,11 +404,10 @@ int gr_phase_start_s(char *filename, unsigned int line)
      */
     //unsigned long int file = hash(filename);
     
-    int fd = open(filename, O_RDWR);
+    int fd = gr_open_file(filename);
     if (fd == -1) {
-        fprintf(stderr, "failed to get file identifier for (%s), cannot estimate the length because of error: %s\n", filename, strerror(errno));
+        fprintf(stderr, "failed to get file identifier for (%s), cannot estimate the length.\n", filename);
     } else {
-	gr_record_fd(fd);
         gr_phase_start(fd, line);
     }
     
@@ -488,13 +484,13 @@ int gr_phase_start(unsigned long int file, unsigned int line)
  */
 int gr_phase_end_s(char *filename, unsigned int line)
 {
-    int fd = open(filename, O_RDWR);
+    int fd = gr_open_file(filename);
     if (fd == -1) {
-        fprintf(stderr, "failed to get file identifier, cannot estimate the length \
-                because of error: %s\n", strerror(errno));
+        fprintf(stderr, "failed to get file identifier, cannot estimate the length. \n");
     } else {
         gr_phase_end(fd, line);
     }
+    return 0;
 }
 /*
  * Mark the end of a phase. It must match a gr_phase_start() call.
