@@ -323,9 +323,11 @@ int gr_init(MPI_Comm comm)
  */
 int gr_finalize()
 {
-
+#if 0
     df_destroy_shm_region(gr_shm_meta_region);
     df_shm_finalize(gr_shm_handle);
+#endif
+    
     gr_destroy_global_phases();
     gr_destroy_opened_files();
 
