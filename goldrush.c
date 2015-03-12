@@ -124,8 +124,10 @@ int gr_init(MPI_Comm comm)
     gr_local_rank = gr_get_local_rank();
     gr_local_size = gr_get_num_procs_per_node(comm);
 
-
-
+#ifdef USE_COOPSCHED
+	coopsched_init();
+#endif
+	
     /**
      * creating a shared memory, as in kitten, possibly not using
      * shared memory stuff, so commented here
@@ -361,6 +363,9 @@ int gr_finalize()
     }
     gr_perfctr_finalize(gr_comm_rank);
 #endif
+#ifdef USE_COOPSCHED
+        coopsched_deinit();
+#endif
 
 	return 0;
 }
@@ -372,6 +377,9 @@ int gr_finalize()
  */
 int gr_mainloop_start()
 {
+#if USE_COOPSCHED
+    coopsched_init_task(0);
+#endif
     is_in_mainloop = 1;
     return 0;
 }
@@ -389,7 +397,9 @@ int gr_mainloop_end()
      */
 	if (!gr_is_main_thread()) {
         /* check whether the idle length is long enough. */
-		yield_to_coop();
+#if USE_COOPSCHED
+        coopsched_yield_cpu_to(0);
+#endif
 	}
 
     return 0;
@@ -439,6 +449,11 @@ int gr_phase_start(unsigned long int file, unsigned int line)
     gr_phase_t p = gr_find_phase(file, line, &p_perf); // make a guess
     int should_run = 1;
     if(p && p_perf && p_perf->avg_length != 0 && p_perf->avg_length <= min_phase_length) {
+        
+        #if DEBUG_CHAO
+        fprintf(stderr, "avg_length: %d\n", p_perf->avg_length);
+        #endif
+
         should_run = 0;
     }
     current_phase_file = file;
@@ -450,7 +465,9 @@ int gr_phase_start(unsigned long int file, unsigned int line)
 
     // resume the analysis process
     if(should_run && !gr_is_main_thread()) {
-        yield_to_coop();
+#if USE_COOPSCHED
+        coopsched_yield_cpu_to(0);
+#endif
         is_resumed = 1;
     }
 
@@ -486,6 +503,11 @@ int gr_phase_start(unsigned long int file, unsigned int line)
  */
 int gr_phase_end_s(char *filename, unsigned int line)
 {
+
+#if USE_COOPSCHED
+    coopsched_init_task(0);
+#endif
+
     int fd = gr_open_file(filename);
     if (fd == -1) {
         fprintf(stderr, "failed to get file identifier, cannot estimate the length. \n");
