@@ -1,6 +1,31 @@
 #ifndef __RDTSC_H_DEFINED__
 #define __RDTSC_H_DEFINED__
 
+#if 1
+//added by Chao
+#if 0
+#include <sys/time.h>
+#else 
+#include <time.h>
+#endif 
+
+static __inline__ unsigned long long rdtsc(void)
+{
+#if 0
+	unsigned long long ms;
+	struct timeval curtime;
+	gettimeofday(&curtime, 0);
+	ms = (unsigned long long) curtime.tv_sec * 1000000 + (unsigned long long) curtime.tv_usec;
+//	printf ("%lu\n", ms);
+	return ms;
+#else 
+	unsigned long long us;
+	us  = (unsigned long long)clock();
+	return us;
+#endif
+}
+
+#else
 
 #if defined(__i386__)
 
@@ -46,6 +71,8 @@ static __inline__ unsigned long long rdtsc(void)
 #error "No tick counter is available!"
 
 #endif
+#endif 
+
 
 
 /*

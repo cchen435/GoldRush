@@ -126,6 +126,7 @@ int gr_init(MPI_Comm comm)
 
 #ifdef USE_COOPSCHED
 	coopsched_init();
+	fprintf(stderr, "coop init finished\n");
 #endif
 	
     /**
@@ -217,7 +218,7 @@ int gr_init(MPI_Comm comm)
 
     // simulation specific initialization
 
-    sleep(20);
+    //sleep(20);
 
     // set up config parameters from environment variables
     char *do_suspend_str = getenv("GR_DO_SUSPEND");
@@ -438,23 +439,19 @@ int gr_phase_start_s(char *filename, unsigned int line)
  */
 int gr_phase_start(unsigned long int file, unsigned int line)
 {
-//fprintf(stderr, "im here %s %lu\n", (char *)file, file);
 #ifdef DEBUG_TIMING
     t1 = rdtsc();
 #endif
 
     // estimate the length of the current phase based on history info
     // skip small phases
-    gr_phase_perf_t p_perf;
+    gr_phase_perf_t p_perf=NULL;
     gr_phase_t p = gr_find_phase(file, line, &p_perf); // make a guess
-    int should_run = 1;
-    if(p && p_perf && p_perf->avg_length != 0 && p_perf->avg_length <= min_phase_length) {
-        
-        #if DEBUG_CHAO
-        fprintf(stderr, "avg_length: %d\n", p_perf->avg_length);
-        #endif
+    int should_run = 0;
 
-        should_run = 0;
+	// find a phase with average length larger than minimal requirement
+    if(p && p_perf && p_perf->avg_length != 0 && p_perf->avg_length >= min_phase_length) {
+        should_run = 1;
     }
     current_phase_file = file;
     current_phase_line = line;
@@ -465,11 +462,22 @@ int gr_phase_start(unsigned long int file, unsigned int line)
 
     // resume the analysis process
     if(should_run && !gr_is_main_thread()) {
+        is_resumed = 1;
 #if USE_COOPSCHED
         coopsched_yield_cpu_to(0);
 #endif
-        is_resumed = 1;
+		return 0;
     }
+
+	// worker threads do nothing except to check whether needs to yielding cpu
+	if (!gr_is_main_thread()) {
+		return 0;
+	}
+
+#if DEBUG_LOGIC
+	int id = gr_is_main_thread() ? 0: 1;
+	fprintf(stdout, "phase_start: id %d\n", id);
+#endif 
 
 #ifdef DEBUG_TIMING
     t3 = rdtsc();
@@ -527,7 +535,7 @@ int gr_phase_end_s(char *filename, unsigned int line)
  */
 int gr_phase_end(unsigned long int file, unsigned int line)
 {
-  if(has_start_phase) {
+  if(gr_is_main_thread() && has_start_phase) {
 
 #ifdef DEBUG_TIMING
     t6 = rdtsc();
@@ -562,14 +570,6 @@ int gr_phase_end(unsigned long int file, unsigned int line)
     if(is_resumed) {
         // TODO: lock semaphore
         // Chao: do nothing here first, as it is main thread
-#if 0
-        gr_receiver_t r = gr_shm_meta->receivers;
-        int num_receivers = gr_shm_meta->num_receivers;
-        int i;
-        for(i = 0; i < num_receivers; i ++) {
-            gr_suspend_receiver(&r[i]);
-        }
-#endif
         is_resumed = 0;
     }
 
@@ -587,6 +587,7 @@ int gr_phase_end(unsigned long int file, unsigned int line)
         return -1;
     }
     uint64_t length = end_cycle - current_phase_start_time;
+
 #ifdef GR_HAVE_PERFCTR
 // optimize out
     if(gr_do_phase_perfctr) {

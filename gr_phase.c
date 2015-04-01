@@ -275,8 +275,12 @@ void gr_update_phase(int p_index, uint64_t length, long long *pctr_values)
     gr_phases[p_index].count ++;
     gr_phase_perf_t pp = &gr_phases_perf[p_index];
 
-    //pp->avg_length = (pp->avg_length * gr_phases[p_index].count + length) / gr_phases[p_index].count;
-    pp->avg_length += length;
+#if DEBUG_CHAO
+	fprintf(stdout, "index : %d, avg_length : %lu, count : %u, length: %lu\n", p_index, pp->avg_length, gr_phases[p_index].count, length);
+#endif
+
+    pp->avg_length = (pp->avg_length * gr_phases[p_index].count + length) / gr_phases[p_index].count;
+    //pp->avg_length += length;
     if(length > pp->max_length) {
         pp->max_length = length;
     }

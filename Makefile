@@ -24,7 +24,7 @@ endif
 ifeq ($(LINUX),y)
  #   CC=mpicc -c -g -DNDEBUG=1
     CC=mpicc -c -g -DNDEBUG=1 -DGR_HAVE_PERFCTR=1
-    CFLAGS=-c -O2 -DNDEBUG=1 -DDEBUG_CHAO=1 -DUSE_COOPSCHED -I$(HOME)/apps/include -L$(HOME)/apps/lib
+    CFLAGS=-c -O2 -DNDEBUG=1 -DDEBUG_PHASE_LEN=1 -DDEBUG_LOGIC=1 -DDEBUG_TIMING=0 -DUSE_COOPSCHED -I$(HOME)/apps/include -L$(HOME)/apps/lib
     INSTALL_PREFIX=$(HOME)/apps
 endif
 
