@@ -129,71 +129,6 @@ int gr_init(MPI_Comm comm)
 	fprintf(stderr, "coop init finished\n");
 #endif
 	
-    /**
-     * creating a shared memory, as in kitten, possibly not using
-     * shared memory stuff, so commented here
-      */
- #if 0
-    char *shm_method_str = getenv("DF_SHM_METHOD");
-    enum DF_SHM_METHOD shm_method_no;
-    if(shm_method_str) {
-        shm_method_no = atoi(shm_method_str);
-    }
-    else {
-        shm_method_no = CHOSEN_SHM_METHOD;
-    }
-    gr_shm_handle = df_shm_init(shm_method_no, NULL);
-    
-    void *meta_region_name;
-    int meta_region_name_size;
-    if(shm_method_no == DF_SHM_METHOD_SYSV) {
-        meta_region_name = (void *) &gr_meta_region_key;
-        meta_region_name_size = sizeof(gr_meta_region_key);
-    }
-    else if(shm_method_no == DF_SHM_METHOD_MMAP) {
-        meta_region_name = (void *) gr_meta_region_mmap_name;
-        meta_region_name_size = strlen(gr_meta_region_mmap_name)+1;
-    }
-    else {
-        meta_region_name = (void *) gr_meta_region_posix_name;
-        meta_region_name_size = strlen(gr_meta_region_posix_name)+1;
-    }
-    int meta_region_size = gr_get_shm_meta_region_size();
-
-    // initialize and attach to shared memory meta-data region
-    if(gr_is_local_leader()) {
-        // create shm meta region at a well-known place
-        gr_shm_meta_region = df_create_named_shm_region(gr_shm_handle, 
-            meta_region_name, meta_region_name_size, meta_region_size, NULL);
-        if(!gr_shm_meta_region) {
-            fprintf(stderr, "Error: Cannot create region. %s:%d\n", 
-                __FILE__, __LINE__);
-            exit(-1);
-        }
-        if(gr_init_shm_meta_region(gr_shm_meta_region) != 0) {
-            fprintf(stderr, "Error: gr_init_shm_meta_region() returns non-zero.\n");
-            exit(-1);
-        }
-    }
-    else {
-        while(1) {
-            // attach to the meta-data region
-            gr_shm_meta_region = df_attach_named_shm_region(gr_shm_handle, meta_region_name,
-                meta_region_name_size, meta_region_size, NULL);
-            if(!gr_shm_meta_region) {
-                // wait until the shm base region is created
-                sleep(1);
-                fprintf(stderr, "Error: Cannot attach shm region. %s:%d\n",
-                    __FILE__, __LINE__);
-            }
-            else {
-                break;
-            }
-        }
-    }
-    gr_shm_meta = (gr_shm_layout_t)gr_shm_meta_region->starting_addr;
-#endif
-
     is_simulation = 0;
     if(getenv("GR_IS_SIMULATION") != NULL) {
         is_simulation = 1;
@@ -248,64 +183,6 @@ int gr_init(MPI_Comm comm)
     if(gr_do_stub_str != NULL) {
         gr_do_stub = atoi(gr_do_stub_str);
     }
-
-#if 0
-    // initialize shared memory monitor buffer
-    int my_local_rank = gr_get_local_rank();
-    key_t mon_buffer_key = 0;
-
-#ifdef GR_HAVE_PERFCTR
-    if(gr_do_stub) {
-        mon_buffer_key = my_local_rank + SHM_MONITOR_BUFFER_KEY_BASE;
-        gr_mon_buffer_region = gr_create_monitor_buffer(gr_shm_handle, mon_buffer_key);  
-        if(!gr_mon_buffer_region) {
-            exit(-1);
-        }
-        gr_monitor_buffer = (gr_mon_buffer_t) gr_mon_buffer_region->starting_addr;
-    }
-#endif
-
-    gr_sender_t s = &(gr_shm_meta->senders[gr_shm_meta->num_senders]);
-    int num_procs = gr_get_num_procs_per_node(comm);
-
-#ifdef GR_HAVE_PERFCTR
-    s->shm_mon_buffer_key[my_local_rank] = mon_buffer_key;
-#endif
-
-    MPI_Barrier(comm);
-
-    if(gr_get_local_rank() == 0) {
-        s->app_id = gr_app_id;
-        s->num_procs = num_procs;
-        gr_shm_meta->num_senders ++;
-    }
-
-#ifdef GR_HAVE_PERFCTR
-    if(gr_do_stub) {
-        // initialize signal handling
-        char *timer_str = getenv("GR_TIMER_INTERVAL");
-        int timer_interval;
-        if(timer_str) {
-            timer_interval = atoi(timer_str);
-        }
-        else {
-            timer_interval = GR_DEFAULT_TIMER_INTERVAL; 
-        }
-        timer_str = getenv("GR_MONITOR_LOCKING");
-        int num_locking;
-        if(timer_str) {
-            num_locking = atoi(timer_str);
-        }
-        else {
-            num_locking = GR_DEFAULT_MONITOR_LOCKING;
-        }
-        if(gr_stub_init(timer_interval, num_locking)) {
-            exit(-1);
-        }
-    }
-#endif
-#endif
-
 #ifdef DEBUG_TIMING
     my_rank = gr_comm_rank;
     sprintf(log_file_name, "timestamp.%d\0", my_rank);
@@ -326,11 +203,6 @@ int gr_init(MPI_Comm comm)
  */
 int gr_finalize()
 {
-#if 0
-    df_destroy_shm_region(gr_shm_meta_region);
-    df_shm_finalize(gr_shm_handle);
-#endif
-    
     gr_destroy_global_phases();
     gr_destroy_opened_files();
 
@@ -448,6 +320,11 @@ int gr_phase_start(unsigned long int file, unsigned int line)
     gr_phase_perf_t p_perf=NULL;
     gr_phase_t p = gr_find_phase(file, line, &p_perf); // make a guess
     int should_run = 0;
+
+#if PRINT_AVG_LEN
+	if(p_perf && gr_is_main_thread())
+		fprintf(stdout, "**** average phase length ****\n\t %d \n*****************************\n", p_perf->avg_length);
+#endif
 
 	// find a phase with average length larger than minimal requirement
     if(p && p_perf && p_perf->avg_length != 0 && p_perf->avg_length >= min_phase_length) {
